@@ -7,8 +7,6 @@ from dotenv import load_dotenv
 import spacy
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
-from nltk.translate.bleu_score import sentence_bleu
-import requests
 
 # Load environment variables
 load_dotenv()
@@ -101,39 +99,57 @@ def find_errors(generated, ground_truth):
 errors = find_errors(generated_report, ground_truth)
 st.write("Identified Errors:", errors)
 
+
 # METRICS CALCULATION
-def calculate_bleu(generated, ground_truth):
+from nltk.translate.bleu_score import sentence_bleu
+
+def calculate_bleu(generated,ground_truth):
     return sentence_bleu([ground_truth.split()], generated.split())
 
-bleu_score = calculate_bleu(generated_report, ground_truth)
+bleu_score = calculate_bleu(generated_report,ground_truth)
 st.metric("BLEU SCORE", f"{bleu_score:.2f}")
 
+
 # GOOGLE GEMINI INTEGRATION
-def query_google_gemini(api_key, report, ground_truth):
-    url = "https://google-gemini-api.example.com/v1/evaluate"  # Update this with the actual API URL
+
+import requests
+
+def query_google_gemini(api_key, generated_report, ground_truth):
+    url = "https://google-gemini-api.example.com/v1/evaluate"
     payload = {
-        "generated_report": report,
+        "generated_report": generated_report,
         "ground_truth": ground_truth
     }
+    headers = { "Authorization": f"Bearer {api_key}"}
+    response = requests.post(url, json=payload, headers=headers)
+    return response.json()
 
-    headers = { 
-        "Authorization": f"Bearer {api_key}" 
-    }
-    
-    try:
-        response = requests.post(url, json=payload, headers=headers)
-        response.raise_for_status()  # Raise an error for HTTP status codes
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        st.error(f"Failed to connect to Google Gemini API: {e}")
-        return None
+api_key = "AIzaSyA-Ozwm0-lE7hlfTOpwbEfc_kyOS4XCcOM"
+gemini_reposne = query_google_gemini(api_key, generated_report, ground_truth)
+st.write("Gemini Evaluation Response:" ,gemini_reposne)
 
-api_key = os.getenv("AIzaSyBBKG0j21fjGs2jIqW9bJ04k9lkhjT3NII")  # Fetch API key securely
-if api_key:
-    gemini_response = query_google_gemini(api_key, generated_report, ground_truth)
-    if gemini_response:
-        st.write("Gemini Evaluation Response:", gemini_response)
-    else:
-        st.error("Failed to retrieve a response from the Google Gemini API.")
-else:
-    st.error("API key not found. Please set the GOOGLE_API_KEY environment variable.")
+
+# ########################################################3
+# st.sidebar.title("Radiology Report Evaluation")
+
+# uploaded_report = st.sidebar.file_uploader("Upload AI-Generated Report")
+# ground_truth_report = st.sidebar.text_area("Paste Ground Truth Report")
+
+# if uploaded_report and ground_truth_report:
+#     generated_text = extract_text_from_file(uploaded_report)
+#     st.write("Generated Report", generated_text)
+#     st.write("Ground Truth Report", ground_truth_report)
+
+#     # Compare Reports
+#     differences = compare_reports(generated_text, ground_truth_report)
+#     st.write("Comparison Results:", differences)
+
+#     # Display Metrics
+#     bleu_score = calculate_bleu(generated_text, ground_truth_report)
+#     st.metric("BLEU Score", f"{bleu_score:.2f}")
+
+#     # Google Gemini Integration
+#     gemini_results = query_google_gemini(api_key, generated_text, ground_truth_report)
+#     st.write("Gemini Evaluation:", gemini_results)
+#chatGPT : https://chatgpt.com/c/6747f32e-8c6c-8010-81fc-87164dcdfd2f
+# ###################################################
